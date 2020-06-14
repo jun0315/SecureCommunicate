@@ -1,9 +1,9 @@
 package com.zoe.client;
 
-import com.zoe.message.MessageDecrypt;
-import com.zoe.message.MessageEncrypt;
+import com.zoe.client.message.Message;
+import com.zoe.client.message.MessageEncryptDecrypt;
+import com.zoe.client.message.impl.AesMessageEncryptDecrypt;
 import com.zoe.encrypt.rsa.RSA;
-import com.zoe.message.Message;
 import com.zoe.utils.Utils;
 
 import java.io.*;
@@ -24,11 +24,34 @@ public class Client {
     private BufferedReader bufferedReader;
     private Scanner scanner;
 
-    private String key;
-
     private String account = "user";
 
-    private static final String MODE = "aes";
+    MessageEncryptDecrypt messageEncryptDecrypt;
+
+    public boolean startWithGui(String host, int port, String account) {
+        try {
+            this.account = account;
+            server = new Socket(host, port);
+            initStream();
+            initConnect();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void sendMessageWithGui(String string) {
+        if (string != null && string.length() > 0) {
+            sendMessage(new Message(account, string));
+        }
+    }
+
+
+    public Message receiveMessageWithGui() throws IOException {
+        return receiveMsg();
+    }
+
 
     public void start(String host, int port) {
         try {
@@ -50,12 +73,13 @@ public class Client {
 
     private void initConnect() throws IOException {
         RSA rsa = new RSA();
-        sendMsg(Utils.ObjectToJson(rsa.getPublicKey()));
+        printWriter.println(Utils.ObjectToJson(rsa.getPublicKey()));
+        printWriter.flush();
         while (true) {
-            var msg = receiveMsg();
-            if (msg != null && msg.length() >= 1) {
-                key = new String(rsa.getPrivateKey().decrypt(Utils.base64String2Bytes(msg)));
-                //des = new DES(key);
+            var encryptedKey = bufferedReader.readLine();
+            if (encryptedKey != null && encryptedKey.length() >= 1) {
+                String key = new String(rsa.getPrivateKey().decrypt(Utils.base64String2Bytes(encryptedKey)));
+                messageEncryptDecrypt = new AesMessageEncryptDecrypt(key);
                 out.println("encrypted to com.zoe.server now.");
                 break;
             }
@@ -77,14 +101,14 @@ public class Client {
     class SendMessageListener extends Thread {
         @Override
         public void run() {
-            MessageEncrypt messageEncrypt = new MessageEncrypt().mode(MODE, key);
             while (true) {
                 var input = scanner.nextLine();
                 if (input != null && input.length() > 0) {
-                    sendMsg(messageEncrypt.encrypt(new Message(account, input)));
+                    sendMessage(new Message(account, input));
                 }
             }
         }
+
     }
 
     /**
@@ -94,29 +118,29 @@ public class Client {
         @Override
         public void run() {
             try {
-                MessageDecrypt messageDecrypt = new MessageDecrypt().mode(MODE, key);
                 while (true) {
-                    var receive = receiveMsg();
-                    if (receive != null && receive.length() > 0) {
-                        Message decrypted = messageDecrypt.decrypt(receive);
-                        out.println(decrypted.toString());
-                    }
+                    var receiveMessage = receiveMsg();
+                    out.println(receiveMessage.toString());
                 }
             } catch (SocketException e) {
-                out.println("com.zoe.server error" + server.getRemoteSocketAddress());
+                out.println("server error" + server.getRemoteSocketAddress());
             } catch (IOException e) {
                 // log
             }
         }
     }
 
-    private void sendMsg(String msg) {
-        printWriter.println(msg);
+    private void sendMessage(Message msg) {
+        printWriter.println(messageEncryptDecrypt.encrypt(msg));
         printWriter.flush();
     }
 
-    private String receiveMsg() throws IOException {
-        return bufferedReader.readLine();
+    private Message receiveMsg() throws IOException {
+        String receivedInfo = bufferedReader.readLine();
+        if (receivedInfo != null && receivedInfo.length() > 0) {
+            return messageEncryptDecrypt.decrypt(receivedInfo);
+        }
+        return new Message("null", "something wrong.");
     }
 
 }

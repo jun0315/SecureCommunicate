@@ -1,8 +1,8 @@
 package com.zoe.server;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.zoe.message.MessageDecrypt;
-import com.zoe.message.MessageEncrypt;
+import com.zoe.client.message.impl.AesMessageEncryptDecrypt;
+import com.zoe.client.message.MessageEncryptDecrypt;
 import com.zoe.utils.Utils;
 
 import java.io.IOException;
@@ -27,8 +27,7 @@ public class Server {
     public static final int THREAD_POOL_SIZE = 32;
     private ThreadPoolExecutor executor;
 
-    private MessageDecrypt messageDecrypt;
-    private MessageEncrypt messageEncrypt;
+    private MessageEncryptDecrypt messageEncryptDecrypt;
 
     public void start(int setPort) {
         port = setPort;
@@ -45,12 +44,12 @@ public class Server {
                 out.println("客户端[" + (client != null ? client.getRemoteSocketAddress() : "null address")
                         + "]连接成功，当前在线用户" + "userCount" + "个");
                 // 将客户端添加到集合
-                ClientList.getClients().add(client);
+                ClientsList.getClients().add(client);
                 // 每一个客户端开启一个线程处理消息
 
                 //接受publicKey
 
-                executor.execute(new ServerListener(client, messageEncrypt, messageDecrypt));
+                executor.execute(new ServerListener(client, messageEncryptDecrypt));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -58,10 +57,7 @@ public class Server {
     }
 
     private void initEncrypt() {
-        //TODO
-        // DES des = new DES(Utils.generateDesKey(16).getBytes());
-        messageEncrypt = new MessageEncrypt().mode("aes", Utils.generateDesKey(16));
-        messageDecrypt = new MessageDecrypt().mode("aes", Utils.generateDesKey(16));
+        messageEncryptDecrypt = new AesMessageEncryptDecrypt(Utils.generateDesKey(16));
     }
 
     private void initThreadPool() {

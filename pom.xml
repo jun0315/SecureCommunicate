@@ -13,7 +13,6 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
 
@@ -69,7 +68,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.zoe.ApplicationStart</mainClass>
+                            <mainClass>com.zoe.gui.GuiStart</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
